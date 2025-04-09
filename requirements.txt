@@ -1,0 +1,4 @@
+streamlit
+newspaper3k
+scikit-learn
+pandas
