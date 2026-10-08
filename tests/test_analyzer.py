@@ -20,16 +20,17 @@ def test_classification_requires_directional_evidence():
     with pytest.raises(ValueError, match="supporting"):
         validate_evidence(assessment(direction="Unclear"), TEXT)
 
-def test_api_uses_structured_output_and_no_storage():
+def test_api_uses_structured_output():
     client = Mock()
-    client.responses.parse.return_value.output_parsed = assessment()
+    client.models.generate_content.return_value.text = assessment().model_dump_json()
     assert analyze(client, TEXT, "India", "test-model").leaning == "Left leaning"
-    assert client.responses.parse.call_args.kwargs["store"] is False
-    assert client.responses.parse.call_args.kwargs["text_format"] is Assessment
+    config = client.models.generate_content.call_args.kwargs["config"]
+    assert config.response_mime_type == "application/json"
+    assert config.response_json_schema == Assessment.model_json_schema()
 
 def test_refusal_is_handled():
     client = Mock()
-    client.responses.parse.return_value.output_parsed = None
+    client.models.generate_content.return_value.text = None
     with pytest.raises(ValueError, match="complete assessment"):
         analyze(client, TEXT, "India", "test-model")
 
@@ -38,19 +39,42 @@ def test_bad_inputs_do_not_call_api(text, country):
     client = Mock()
     with pytest.raises(ValueError):
         analyze(client, text, country, "test-model")
-    client.responses.parse.assert_not_called()
+    client.models.generate_content.assert_not_called()
 
 def test_background_preserves_citations():
-    annotation = NS(type="url_citation", url="https://example.com/bio", title="Author biography")
+    metadata = NS(grounding_chunks=[NS(web=NS(uri="https://example.com/bio", title="Author biography"))], grounding_supports=[NS(segment=NS(end_index=18), grounding_chunk_indices=[0])], search_entry_point=None)
     client = Mock()
-    client.responses.create.return_value = NS(output_text="A sourced biography.", output=[NS(type="message", content=[NS(type="output_text", annotations=[annotation, annotation])])])
+    client.models.generate_content.return_value = NS(text="A sourced biography.", candidates=[NS(grounding_metadata=metadata)])
     result = research_reporter(client, "Reporter", "Outlet", "India", "test-model")
     assert len(result["sources"]) == 1
+    assert "[1](https://example.com/bio)" in result["text"]
 
 def test_uncited_background_is_rejected():
     client = Mock()
-    client.responses.create.return_value = NS(output_text="Unsupported biography", output=[])
+    client.models.generate_content.return_value = NS(text="Unsupported biography", candidates=[])
     with pytest.raises(ValueError, match="cited"):
+        research_reporter(client, "Reporter", "Outlet", "India", "test-model")
+
+def test_malformed_json_is_rejected():
+    client = Mock()
+    client.models.generate_content.return_value.text = "not JSON"
+    with pytest.raises(ValueError):
+        analyze(client, TEXT, "India", "test-model")
+
+def test_grounding_citations_use_utf8_offsets():
+    text = "भारत में reporter."
+    metadata = NS(grounding_chunks=[NS(web=NS(uri="https://example.com/bio", title="Bio"))], grounding_supports=[NS(segment=NS(end_index=len(text.encode('utf-8'))), grounding_chunk_indices=[0])], search_entry_point=NS(rendered_content="<div>Search suggestion</div>"))
+    client = Mock()
+    client.models.generate_content.return_value = NS(text=text, candidates=[NS(grounding_metadata=metadata)])
+    result = research_reporter(client, "Reporter", "Outlet", "India", "test-model")
+    assert result["text"] == text + " [1](https://example.com/bio)"
+    assert result["search_suggestions"] == "<div>Search suggestion</div>"
+
+def test_missing_claim_citations_is_rejected():
+    metadata = NS(grounding_chunks=[NS(web=NS(uri="https://example.com/bio", title="Bio"))], grounding_supports=[], search_entry_point=None)
+    client = Mock()
+    client.models.generate_content.return_value = NS(text="Biography", candidates=[NS(grounding_metadata=metadata)])
+    with pytest.raises(ValueError, match="claim-level"):
         research_reporter(client, "Reporter", "Outlet", "India", "test-model")
 
 @pytest.mark.parametrize("url", ["file:///etc/passwd", "http://user:pass@example.com", "https://example.com:8080", "http://127.0.0.1", "http://[::1]", "http://169.254.169.254"])

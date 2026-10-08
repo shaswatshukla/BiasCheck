@@ -1,4 +1,5 @@
 .deps/
+.geminideps/
 .venv/
 __pycache__/
 .pytest_cache/

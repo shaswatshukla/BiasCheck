@@ -2,7 +2,9 @@ import json
 import hashlib
 import os
 import streamlit as st
-from openai import OpenAI, OpenAIError
+from google import genai
+from google.genai import errors, types
+import httpx
 from analyzer import analyze, research_reporter
 from articles import extract_article
 
@@ -19,13 +21,14 @@ def setting(name, default=""):
 
 with st.sidebar:
     st.header("Analysis settings")
-    key = st.text_input("OpenAI API key", type="password") or setting("OPENAI_API_KEY")
-    model = st.text_input("Model", value=setting("OPENAI_MODEL", "gpt-4.1-mini"))
+    key = st.text_input("Gemini API key", type="password") or setting("GEMINI_API_KEY")
+    st.link_button("Get a free-tier Gemini key", "https://aistudio.google.com/apikey")
+    model = st.text_input("Model", value=setting("GEMINI_MODEL", "gemini-2.5-flash"))
     country = st.selectbox("Political context", ["India", "United States", "United Kingdom", "Other"])
     if country == "Other":
         country = st.text_input("Country / political context")
     st.info("Left and right vary by country. Centrist requires evidence; missing evidence is reported as uncertain.")
-    st.caption("Analysis sends article text to OpenAI. Optional reporter research uses web search. API charges apply. Keys are never included in exports.")
+    st.caption("Analysis sends article text to Google. Gemini 2.5 Flash has a limited free tier; keep your project on the free tier for free usage. Google may use free-tier inputs to improve products. Keys are never exported.")
 
 mode = st.radio("Article input", ["Paste text", "Article URL"], horizontal=True)
 if mode == "Article URL":
@@ -54,25 +57,29 @@ if st.button("Analyze article", type="primary"):
     st.session_state.pop("report", None)
     try:
         if not key:
-            raise ValueError("Add an OpenAI API key in the sidebar to analyze.")
+            raise ValueError("Add a Gemini API key in the sidebar to analyze.")
         if research and not (reporter.strip() and outlet.strip()):
             raise ValueError("Reporter research needs a name and outlet to distinguish namesakes.")
-        client = OpenAI(api_key=key, timeout=90, max_retries=1)
-        with st.spinner("Assessing framing and checking evidence…"):
+        with genai.Client(api_key=key, http_options=types.HttpOptions(timeout=90000)) as client, st.spinner("Assessing framing and checking evidence…"):
             report = analyze(client, text, country, model)
             background = None
             research_error = None
             if research:
                 try:
                     background = research_reporter(client, reporter, outlet, country, model)
-                except (ValueError, OpenAIError):
-                    research_error = "Reporter research was unavailable. The article assessment is still shown; try again later."
+                except (ValueError, errors.APIError, httpx.HTTPError):
+                    research_error = "Reporter research was unavailable. Check Google Search access and free-tier quota, then retry. The article assessment is still shown."
         st.session_state["report"] = {"article": report.model_dump(), "background": background, "research_error": research_error, "context": country, "model": model, "source_url": st.session_state.get("source_url", "") if mode == "Article URL" else ""}
         st.session_state["report_signature"] = signature
     except ValueError as exc:
         st.error(str(exc))
-    except OpenAIError:
-        st.error("Analysis could not complete. Check your API key, model access, account credit and connection, then retry.")
+    except errors.APIError as exc:
+        if exc.code == 429:
+            st.error("Gemini's usage quota was reached. Wait and retry, or check your free-tier limits in Google AI Studio.")
+        else:
+            st.error("Gemini could not complete the analysis. Check your API key and model access, then retry.")
+    except httpx.HTTPError:
+        st.error("Gemini could not be reached. Check your connection and retry.")
 
 if "report" in st.session_state:
     saved = st.session_state["report"]
@@ -96,6 +103,9 @@ if "report" in st.session_state:
             st.markdown("**Sources**")
             for source in saved["background"]["sources"]:
                 st.link_button(source["title"], source["url"])
+            if saved["background"].get("search_suggestions"):
+                import streamlit.components.v1 as components
+                components.html(saved["background"]["search_suggestions"], height=180, scrolling=True)
         elif not saved["research_error"]:
             st.info("Enable reporter research to check public biographies, employment, published work and explicitly disclosed affiliations.")
         st.caption("Background does not change the article classification. Identity and source claims need human review.")

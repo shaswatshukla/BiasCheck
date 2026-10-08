@@ -1,4 +1,5 @@
 streamlit>=1.45,<2
-openai>=1.68,<4
+google-genai>=2.29,<3
+httpx>=0.28,<1
 pydantic>=2.8,<3
 trafilatura>=2.0,<3

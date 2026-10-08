@@ -23,3 +23,15 @@ def test_result_and_export(monkeypatch):
     assert app.subheader[0].value == "Uncertain"
     assert app.session_state["report"]["article"]["summary"] == result.summary
     assert "test-key" not in str(app.session_state["report"])
+
+def test_gemini_quota_error(monkeypatch):
+    from google.genai.errors import ClientError
+    def exhausted(*args):
+        raise ClientError(429, {"error": {"code": 429, "message": "Quota exceeded", "status": "RESOURCE_EXHAUSTED"}})
+    monkeypatch.setattr("analyzer.analyze", exhausted)
+    app = AppTest.from_file(APP, default_timeout=15).run()
+    app.sidebar.text_input[0].set_value("test-key")
+    app.text_area[0].set_value(TEXT)
+    app.button[0].click().run()
+    assert not app.exception
+    assert "quota" in app.error[0].value

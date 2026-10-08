@@ -25,13 +25,13 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Enter your OpenAI API key in the sidebar, or copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill in your key. `OPENAI_API_KEY` and `OPENAI_MODEL` environment variables are also supported. Never commit keys. The default model is `gpt-4.1-mini`; select an accessible model supporting Responses structured outputs and web search for optional research.
+Enter your Gemini API key in the sidebar, or copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill in your key. `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are also supported. Never commit keys. The default model is `gemini-2.5-flash`; select an accessible model supporting structured outputs and Google Search grounding for optional research.
 
-Article text is sent to OpenAI when you click Analyze. Reporter name, outlet and country are sent when research is enabled. API usage and web search can incur charges. Responses are requested with `store=False`; this is not a claim of zero provider retention. Reports remain in the browser session until it ends and can be downloaded. The app does not write reports to a database.
+Article text is sent to Google when you click Analyze. Reporter name, outlet and country are sent when research is enabled. Gemini 2.5 Flash currently offers limited free-tier text generation and Google Search grounding. Keep your project on the free tier for free usage; account quotas apply and may change. Paid-tier projects can incur charges. Google may use free-tier inputs to improve products. Reports remain in the browser session until it ends and can be downloaded. The app does not write reports to a database.
 
 ## Deploy on Streamlit Community Cloud
 
-Connect this repository, select the reviewed branch and `app.py` as the entry point. Configure `OPENAI_API_KEY` in the deployment's Secrets settings or let each visitor enter their own key. A shared server key pays for all visitor usage; use private access or add authentication and usage controls before operating a public shared-key service.
+Connect this repository, select the reviewed branch and `app.py` as the entry point. Configure `GEMINI_API_KEY` in the deployment's Secrets settings or let each visitor enter their own key. A shared server key shares your project quota; use private access or add authentication and usage controls before operating a public shared-key service.
 
 URL extraction rejects local/private IP addresses, unusual ports and credential-bearing URLs, validates each redirect, and limits download size. DNS validation is a best-effort defense, not protection against DNS rebinding: use an egress proxy/firewall that blocks private networks for an untrusted public deployment. Some websites block extraction; paste text instead. Extraction and bylines may be incomplete.
 
@@ -50,4 +50,4 @@ This is an LLM-assisted reading tool, not a trained or benchmarked political cla
 
 For production classification, assemble licensed, independently annotated, country-specific articles; split evaluation by outlet, author and time; compare against a baseline and measure per-label precision/recall, inter-annotator agreement and abstention. Publish those results before making accuracy claims.
 
-API integration follows the [Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs) and [Web Search guide](https://developers.openai.com/api/docs/guides/tools-web-search).
+Get a free-tier key from [Google AI Studio](https://aistudio.google.com/apikey). API integration follows Google's [structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [search grounding](https://ai.google.dev/gemini-api/docs/generate-content/google-search) and [pricing](https://ai.google.dev/gemini-api/docs/pricing) documentation.
