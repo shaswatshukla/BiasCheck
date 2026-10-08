@@ -1,7 +1,7 @@
 from types import SimpleNamespace as NS
 from unittest.mock import Mock
 import pytest
-from analyzer import Assessment, Evidence, analyze, validate_evidence, research_reporter
+from analyzer import Assessment, Evidence, analyze, validate_evidence, research_reporter, research_from_sources, BackgroundProfile, BackgroundFact
 from articles import validate_url, extract_article, MAX_BYTES
 
 TEXT = "The proposed tax would fund public hospitals. " + "Officials discussed the plan and residents requested further details. " * 10
@@ -76,6 +76,27 @@ def test_missing_claim_citations_is_rejected():
     client.models.generate_content.return_value = NS(text="Biography", candidates=[NS(grounding_metadata=metadata)])
     with pytest.raises(ValueError, match="claim-level"):
         research_reporter(client, "Reporter", "Outlet", "India", "test-model")
+
+def test_free_background_validates_sources(monkeypatch):
+    monkeypatch.setattr("analyzer.extract_article", lambda url: {"text": "Reporter works at Outlet covering transport.", "url": url, "outlet": "Outlet"})
+    client = Mock()
+    profile = BackgroundProfile(identity_confirmed=True, facts=[BackgroundFact(claim="Covers transport.", quote="Reporter works at Outlet covering transport.", source_number=1)], limitations=[])
+    client.models.generate_content.return_value.text = profile.model_dump_json()
+    result = research_from_sources(client, "Reporter", "Outlet", "India", "test-model", ["https://example.com/bio"])
+    assert "[1](https://example.com/bio)" in result["text"]
+    assert not client.models.generate_content.call_args.kwargs["config"].tools
+    profile.facts[0].quote = "Invented quote"
+    client.models.generate_content.return_value.text = profile.model_dump_json()
+    with pytest.raises(ValueError, match="unverifiable"):
+        research_from_sources(client, "Reporter", "Outlet", "India", "test-model", ["https://example.com/bio"])
+
+def test_unconfirmed_reporter_identity_hides_claims(monkeypatch):
+    monkeypatch.setattr("analyzer.extract_article", lambda url: {"text": TEXT, "url": url, "outlet": "Outlet"})
+    client = Mock()
+    client.models.generate_content.return_value.text = BackgroundProfile(identity_confirmed=False, facts=[], limitations=[]).model_dump_json()
+    result = research_from_sources(client, "Reporter", "Outlet", "India", "test-model", ["https://example.com/bio"])
+    assert "could not be confirmed" in result["text"]
+    assert not result["sources"]
 
 @pytest.mark.parametrize("url", ["file:///etc/passwd", "http://user:pass@example.com", "https://example.com:8080", "http://127.0.0.1", "http://[::1]", "http://169.254.169.254"])
 def test_unsafe_urls_rejected(url):

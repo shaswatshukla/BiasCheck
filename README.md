@@ -7,7 +7,7 @@ A Streamlit app that assesses a news article's political framing in a chosen cou
 - Paste article text or extract a public news URL, then review the text and byline.
 - Left leaning, right leaning, centrist, mixed or uncertain assessment.
 - Exact article quotes, framing explanations, evidence strength and an alternative reading.
-- Optional web research of reporter employment, beats, published work and explicitly disclosed affiliations, with inline citations and source links.
+- Free-tier reporter background summaries from up to three supplied public source URLs, with verified quotes and links. Optional automatic Google Search research requires paid-tier access and may incur charges.
 - Download a JSON report. Keys are never exported.
 - India, US, UK and custom country context.
 
@@ -25,9 +25,9 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Enter your Gemini API key in the sidebar, or copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill in your key. `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are also supported. Never commit keys. The default model is `gemini-2.5-flash`; select an accessible model supporting structured outputs and Google Search grounding for optional research.
+Enter your Gemini API key in the sidebar, or copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill in your key. `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are also supported. Never commit keys. The default model is `gemini-3.5-flash-lite`; select an accessible model supporting structured outputs and Google Search grounding for optional research.
 
-Article text is sent to Google when you click Analyze. Reporter name, outlet and country are sent when research is enabled. Gemini 2.5 Flash currently offers limited free-tier text generation and Google Search grounding. Keep your project on the free tier for free usage; account quotas apply and may change. Paid-tier projects can incur charges. Google may use free-tier inputs to improve products. Reports remain in the browser session until it ends and can be downloaded. The app does not write reports to a database.
+Article text is sent to Google when you click Analyze. Reporter name, outlet and country are sent when research is enabled. Gemini 3.5 Flash-Lite offers limited free-tier text generation. Automatic Google Search grounding requires paid-tier access for this model. Free-tier reporter background analysis uses up to three public source URLs you provide; each page must contain at least 60 words. Keep your project on the free tier for free usage; account quotas apply and may change. Paid-tier projects can incur charges. Google may use free-tier inputs to improve products. Reports remain in the browser session until it ends and can be downloaded. The app does not write reports to a database.
 
 ## Deploy on Streamlit Community Cloud
 
