@@ -1,0 +1,6 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { localAssessment } from '../src/local-analysis';
+import { parseHTML } from '../server/extract';
+test('article extraction strips narration and translation UI while preserving real Hindi content',()=>{const english='The council published its budget and invited residents to comment on the proposals. '.repeat(6);const hindi='यह असली लेख का एक अनुच्छेद है।';const r=parseHTML(`<article><p>AI Narration</p><p>This audio is AI generated.</p><p>मूल अंग्रेजी लेख का निम्न अनुवाद AI द्वारा किया गया है।</p><p>Thank you for your feedback.</p><p>${english}</p><p>${hindi}</p><p>${english}</p></article>`,'https://example.com');assert.ok(!r.text.includes('AI Narration'));assert.ok(!r.text.includes('This audio'));assert.ok(!r.text.includes('मूल अंग्रेजी'));assert.ok(r.text.includes(hindi));assert.equal(r.text.split(english.trim()).length-1,1);});
+test('framing observations appear without inventing an ideological direction',()=>{const r=localAssessment('The government has failed and appears insecure. The response is paranoid hysteria. Communism has failed as a political project. It would be wiser to allow protests.','India');assert.equal(r.leaning,'Uncertain');assert.ok(r.evidence.length>=3);assert.ok(r.evidence.every(e=>e.direction==='Unclear'));assert.match(r.summary,/Framing signals/);});
