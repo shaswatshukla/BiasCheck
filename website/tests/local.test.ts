@@ -1,0 +1,11 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { localAssessment } from '../src/local-analysis';
+const left='We should raise taxes on the wealthy. We must strengthen workers rights.';
+const right='We should reduce corporate taxes. We must cut welfare spending.';
+test('distinct policy advocacy distinguishes directions',()=>{assert.equal(localAssessment(left,'India').leaning,'Left leaning');assert.equal(localAssessment(right,'United States').leaning,'Right leaning');assert.equal(localAssessment(left+' '+right,'India').leaning,'Mixed');});
+test('topic mentions and quoted advocacy are not author positions',()=>{assert.equal(localAssessment('The committee discussed universal healthcare and privatization.','India').leaning,'Uncertain');assert.equal(localAssessment('“'+left+'”','India').leaning,'Uncertain');assert.equal(localAssessment('The minister said we should reduce corporate taxes.','India').evidence.length,0);});
+test('negation and criticism do not become endorsements',()=>{assert.equal(localAssessment('We should not reduce corporate taxes. We must oppose privatization.','India').evidence.length,0);});
+test('compromise needs an explicit author stance',()=>{assert.equal(localAssessment('We should seek a cross-party compromise.','United Kingdom').leaning,'Centrist');});
+test('unsupported language and contexts abstain',()=>{assert.equal(localAssessment(left,'France').evidence.length,0);assert.equal(localAssessment('यह लेख भाषा और साहित्य के बारे में है।','India').leaning,'Uncertain');});
+test('evidence is exact and claims are labelled preliminary',()=>{const result=localAssessment(left,'India');assert.ok(result.evidence.every(e=>left.includes(e.quote)));assert.equal(result.evidence_strength,'Low');assert.match(result.summary,/Preliminary/);});
