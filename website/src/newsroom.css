@@ -6,3 +6,5 @@ body{background:#fff;color:#202020}.main-wrap{margin-left:0}.news-masthead{min-h
 
 .footer .creator-credit{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 15px;border:1px solid #e5ddcf;background:linear-gradient(115deg,#fff 0%,#fbf6eb 50%,#fff 100%);box-shadow:0 2px 10px #30210a08;font-size:.78rem;color:#686052}.creator-credit strong{color:#382b18;font-weight:650}.credit-spark{color:#b08b42;font-size:1rem;margin-left:2px}@media(max-width:700px){.footer .creator-credit{padding:8px 12px;font-size:.73rem}}
 
+ .footer>span.creator-credit:nth-child(2){display:inline-flex}@media(max-width:700px){.footer{justify-content:center}.footer>span.creator-credit:nth-child(2){order:3;width:100%;margin-top:4px}}
+
