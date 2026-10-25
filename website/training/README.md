@@ -1,11 +1,22 @@
-# Supplied newsbias.py
+# Free ABP research model
 
-The user's Python source is preserved in `newsbias.py`. The live free mode ports cleaning, lexicon density, entity-tone, voice counts and sensationalism to TypeScript in `src/multi-signal.ts`. It runs locally without keys.
+`newsbias.py` preserves the user's supplied engine. `load_abp.py` adapts the supplied loader and streams the Git snapshot (or reads ordinary JSON files), keeps 60+ word articles, caps each outlet at 40 articles / each article at 400 words, and removes exact duplicate prefixes globally. Dataset text stays under ignored `.local/` and is never published.
 
-No dataset or fitted weights were supplied. The deployed mode is NOT the trained BiasEngine. It averages available lexical balance `(right-left)/(right+left)` and `tanh(entity_tone*2)` equally; display shares are `(1-score)/2` and its complement. These fixed heuristic shares are not calibrated probabilities. Source priors, TF-IDF/LR, learned stacking and peer framing are inactive. Sensationalism retains the original sigmoid formula and is explicitly not a reliability score.
+## Reproduce
 
-The India seeds describe opposition/government associations, not ideological left/right, and are provisional. US seeds are also hand-authored. Word matches use boundaries instead of substring counts. Quoted-voice counts are descriptive only. Prior policy-rule evidence remains visible separately.
+Install numpy, pandas, scipy and scikit-learn in an isolated environment, then:
 
-Before enabling the trained model, supply licensed English data with `text`, `source`, `label` (`left`, `center`, `right`), sufficient sources and examples of all classes in every nested training/calibration fold. Do not use toy labels as accuracy evidence. The supplied implementation needs auditing: the inner text calibration uses ordinary folds rather than source groups; the meta-classifier is not explicitly calibrated; peer features differ between training/inference; source-prior provenance and event/date grouping require validation; and `evaluate` needs guards for no answered predictions. Run source-held-out evaluation and calibration checks before exposing model probabilities.
+```
+git clone --depth 1 https://github.com/ramybaly/Article-Bias-Prediction.git .local/abp-research
+python training/train_abp.py .local/abp-research
+```
 
-Gemini remains an independent, optional contextual analysis path, not part of the free heuristic fusion.
+`train_abp.py` writes `public/models/abp-us-v1.json` (vocabulary, IDF, linear weights, scaler and temperature), `public/models/abp-model-card.json` (audit, exact source splits, metrics and limitations), and synthetic Python/TypeScript parity fixtures. It does not export article text.
+
+The new training path corrects the supplied code's evaluation/calibration design. It uses three outer source-grouped folds. Each fold holds out complete calibration outlets before training the text and stacked models. Meta features use source-cross-fitted text probabilities, centered logs, lexicon balance and entity tone. Source priors and peer features remain zero; LLM calls are disabled. A temperature is fitted on entirely separate calibration outlets. The final exported model also retains separate calibration outlets rather than refitting on them. Accuracy/F1/ECE/coverage use equal outlet weighting; random-vs-grouped text-only F1 is a leakage diagnostic, not a deployment claim.
+
+This is a compact TF-IDF/logistic baseline, not the paper's neural model. Labels can largely act as outlet ratings. Source-held-out performance does not establish objective article ideology, time/topic transfer or India/UK validity. Exact duplicate prefixes are removed, but near duplicates/same-event coverage can remain. No validated reliability score is claimed.
+
+The model is an optional experimental method, enabled only in United States context; the free heuristic mode remains the default. The held-out accuracy (~43%) and answer coverage (~7%) do not support using this as a dependable article classifier. Other countries retain the existing heuristic mode. The trained path retains the original Python side-feature substring semantics for inference parity; the separate browser heuristic panel uses whole-word matching and is not identical to the learned feature vector. Sensationalism and quoted voice counts remain descriptive and do not affect the trained stack. Gemini is an independent optional contextual path.
+
+The browser ports TF-IDF, multinomial logits, scaler, stacked logits, temperature and abstention to TypeScript. Synthetic fixtures compare Python probabilities with browser inference. The website does not need Python or a key.

@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {predictAbp,trainedAssessment,type AbpModel} from '../src/abp-model';
+import {multiSignalAssessment} from '../src/multi-signal';
+const model=JSON.parse(readFileSync(new URL('../public/models/abp-us-v1.json',import.meta.url),'utf8')) as AbpModel;
+const fixtures=JSON.parse(readFileSync(new URL('./abp-parity.json',import.meta.url),'utf8')) as {text:string;probabilities:number[];answered:boolean}[];
+test('browser inference matches Python TF-IDF + stack + temperature',()=>{for(const f of fixtures){const r=predictAbp(model,f.text);r.probabilities.forEach((p,i)=>assert.ok(Math.abs(p-f.probabilities[i])<1e-8,`${i}: ${p} vs ${f.probabilities[i]}`));assert.equal(r.answered,f.answered);assert.ok(Math.abs(r.probabilities.reduce((a,b)=>a+b,0)-1)<1e-12);}});
+test('model output documents its restricted domain and preserves exact quotations',()=>{const text=fixtures[0].text;const r=trainedAssessment(model,text,multiSignalAssessment(text,'United States'));assert.ok(r.trained);assert.equal(r.evidence_strength,'Low');assert.ok(r.evidence.every(e=>text.includes(e.quote)));assert.match(r.summary,/first 400 words/);assert.ok(r.limitations.some(s=>s.includes('not validated for Indian')));});
+test('training audit proves disjoint source groups in every outer split',()=>{const card=JSON.parse(readFileSync(new URL('../public/models/abp-model-card.json',import.meta.url),'utf8'));for(const fold of card.folds){const train=new Set(fold.training_sources);for(const source of fold.calibration_sources)assert.ok(!train.has(source));for(const source of fold.test_sources){assert.ok(!train.has(source));assert.ok(!fold.calibration_sources.includes(source));}}assert.ok(card.audit.sample_sources>=3);});
+test('research truncation is reproducible and cannot treat a long tail as model input',()=>{const prefix='The committee discussed healthcare taxes and political reform. '.repeat(80);assert.deepEqual(predictAbp(model,prefix).probabilities,predictAbp(model,prefix+' A radically different conclusion with unrelated policies.').probabilities);});
