@@ -1,5 +1,5 @@
 export type Evidence={dimension:string;quote:string;direction:string;explanation:string};
-export type Assessment={leaning:string;evidence_strength:string;summary:string;evidence:Evidence[];alternative_reading:string;limitations:string[];model?:string;analyzed_at?:string};
+export type Assessment={signals?:import('./multi-signal').Signals;leaning:string;evidence_strength:string;summary:string;evidence:Evidence[];alternative_reading:string;limitations:string[];model?:string;analyzed_at?:string};
 export type Background={identity_confirmed:boolean;facts:{claim:string;quote:string;source_number:number}[];limitations:string[];sources:{url:string;title:string}[]};
 export type Input={text:string;title:string;url:string;country:string;custom:string;name:string;outlet:string;sources:string;research:boolean;mode:'text'|'url'};
 export type Report={id:string;title:string;createdAt:string;country:string;text:string;url:string;outlet:string;name:string;sample:boolean;assessment:Assessment;background:Background|null;backgroundError:string};
