@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.netlify/
+.env*
+!.env.example
+.local/
+*.log
+
+__pycache__/
+*.pyc
+training/*.csv
+

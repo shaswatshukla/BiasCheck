@@ -1,0 +1,22 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { verifyAssessment } from '../server/analysis';
+import { isPublicIP,validateURL,parseHTML,extract } from '../server/extract';
+import handler from '../netlify/functions/api';
+
+const text='The proposed tax would fund public hospitals. '+ 'Officials discussed the plan and residents requested further details. '.repeat(10);
+const assessment=()=>({leaning:'Left leaning',evidence_strength:'Moderate',summary:'A test assessment',evidence:[{dimension:'Policy stance',quote:'The proposed tax would fund public hospitals.',direction:'Left',explanation:'A test explanation'}],alternative_reading:'Reporting a position is not endorsing it.',limitations:['One article only.']});
+test('invented article quotes are rejected',()=>{const result=assessment();result.evidence[0].quote='An invented quotation';assert.throws(()=>verifyAssessment(result,text),/unverifiable/);});
+test('a directional result must have supporting evidence',()=>{const result=assessment();result.evidence[0].direction='Unclear';assert.throws(()=>verifyAssessment(result,text),/supporting evidence/);});
+test('quote validation tolerates whitespace but not altered words',()=>{const result=assessment();result.evidence[0].quote='The proposed tax\nwould fund public hospitals.';assert.equal(verifyAssessment(result,text).leaning,'Left leaning');});
+test('missing evidence can be uncertain, not falsely centrist',()=>{const result={...assessment(),leaning:'Uncertain',evidence:[]};assert.equal(verifyAssessment(result,text).leaning,'Uncertain');assert.throws(()=>verifyAssessment({...result,leaning:'Centrist'},text),/supporting/);});
+test('private, mapped, local, reserved and special IPs are blocked',()=>{for(const ip of ['127.0.0.1','10.0.0.1','172.16.2.1','192.168.1.1','169.254.169.254','100.64.0.1','0.0.0.0','::1','fc00::1','fe80::1','::ffff:127.0.0.1','203.0.113.1'])assert.equal(isPublicIP(ip),false,ip);assert.equal(isPublicIP('1.1.1.1'),true);});
+test('URLs reject credentials, ports, IPs and nonweb schemes',()=>{for(const url of ['file:///etc/passwd','http://user:password@example.com','http://127.0.0.1','http://[::1]','http://2130706433','https://example.com:8443','http://service.local'])assert.throws(()=>validateURL(url));assert.equal(validateURL('https://example.com/news').hostname,'example.com');});
+test('HTML extraction removes page chrome and captures metadata',()=>{const html=`<html><head><meta name="author" content="A Reporter"><meta property="og:site_name" content="Newsroom"><title>News title</title></head><body><nav><p>Unrelated menu</p></nav><article><h1>Budget update</h1><p>${text}</p></article><script>privateScript</script></body></html>`;const result=parseHTML(html,'https://example.com/article');assert.equal(result.author,'A Reporter');assert.equal(result.outlet,'Newsroom');assert.equal(result.title,'Budget update');assert.ok(result.text.includes('public hospitals'));assert.ok(!result.text.includes('Unrelated menu'));assert.ok(!result.text.includes('privateScript'));});
+test('short extraction is rejected',()=>{assert.throws(()=>parseHTML('<p>Not an article.</p>','https://example.com'),/Not enough/);});
+test('private DNS cannot be used for extraction',async()=>{await assert.rejects(()=>extract('http://127.0.0.1/private'),/public/);});
+const request=(action:string,data:unknown,headers:Record<string,string>={})=>new Request(`https://example.netlify.app/api/${action}`,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(data)});
+test('missing Gemini key is a clear 401 and is never stored',async()=>{const response=await handler(request('analyze',{text,country:'India'}));assert.equal(response.status,401);assert.equal(response.headers.get('cache-control'),'no-store');});
+test('cross-origin requests are rejected',async()=>{const response=await handler(request('analyze',{text,country:'India'},{Origin:'https://another.example'}));assert.equal(response.status,400);assert.match(await response.text(),/origin/);});
+test('invalid inputs do not reach Google',async()=>{const response=await handler(request('analyze',{text:'short',country:'India'},{'X-Gemini-Key':'test-only'}));assert.equal(response.status,400);});
+test('GET has an explicit method response',async()=>{const response=await handler(new Request('https://example.netlify.app/api/analyze'));assert.equal(response.status,405);});

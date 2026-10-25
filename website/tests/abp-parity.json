@@ -1,0 +1,29 @@
+[
+  {
+    "text": "Congress said the government should expand healthcare and protect workers.",
+    "probabilities": [
+      0.32638279854033764,
+      0.3090104357176187,
+      0.36460676574204376
+    ],
+    "answered": false
+  },
+  {
+    "text": "The government must reduce taxes and support a free market economy.",
+    "probabilities": [
+      0.17731872629875978,
+      0.12300672974933508,
+      0.6996745439519052
+    ],
+    "answered": true
+  },
+  {
+    "text": "The committee met on Tuesday to discuss a proposed budget and release figures.",
+    "probabilities": [
+      0.3839752469642209,
+      0.43215868428214865,
+      0.18386606875363043
+    ],
+    "answered": false
+  }
+]
